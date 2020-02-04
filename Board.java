@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.function.Predicate;
 
 
 public class Board {
@@ -36,8 +37,9 @@ public class Board {
       if (start.contents().color == finish.contents().color) return false;
 
       if (start.contents().type == PieceType.P) {
-        if
+        //if
       }
+      return false;
     }
   }
 
@@ -57,6 +59,8 @@ public class Board {
   private Piece[][] board = new Piece[8][8];
   private boolean[] castlable = { true, true, true, true };  // white kingside, white queenside, black kingside, black queenside
   private Square en_passant = null;  // the square on which the capturing pawn would land, behind the captured pawn
+  private Square whiteKing = new Square(4, 0);
+  private Square blackKing = new Square(4, 7);
 
   public Board() {
     for (int i = 0; i < 8; i++) {
@@ -85,8 +89,8 @@ public class Board {
 
 
   // return all squares that could potentially be accessible by this piece
+  // does not include castling
   // assumes all possible pawn captures
-  // checks castling rights but not obstruction
   // does not check move obstruction
   private ArrayList<Square> getRange(Square s) {
     ArrayList<Square> res = new ArrayList<>();
@@ -95,14 +99,6 @@ public class Board {
       return res;
 
       case K:
-        if (s.contents().color == PieceColor.W && s == new Square(4, 0)) {
-          if (castlable[0]) res.add(new Square(6, 0));
-          if (castlable[1]) res.add(new Square(3, 0));
-        }
-        if (s.contents().color == PieceColor.B && s == new Square(4, 7)) {
-          if (castlable[2]) res.add(new Square(6, 7));
-          if (castlable[3]) res.add(new Square(3, 7));
-        }
         for (int i = -1; i < 2; i++) {
           for (int j = -1; i < 2; i++) {
             Square sq = new Square(s.file + i, s.rank + j);
@@ -124,7 +120,7 @@ public class Board {
             res.add(new Square(s.file, i));
           }
         }
-        if (s.contents() == PieceType.R) break;
+        if (s.contents().type == PieceType.R) break;
 
       case B:
         for (int i = -7; i < 8; i++) {
@@ -158,14 +154,14 @@ public class Board {
             Square sq = new Square(s.file + i, s.rank + 1);
             if (sq.isOnBoard()) res.add(sq);
           }
-          if (s.rank = 1) res.add(new Square(s.file, 3));
+          if (s.rank == 1) res.add(new Square(s.file, 3));
         }
         else {
           for (int i = -1; i < 2; i++) {
             Square sq = new Square(s.file + i, s.rank - 1);
             if (sq.isOnBoard()) res.add(sq);
           }
-          if (s.rank = 6) res.add(new Square(s.file, 4));
+          if (s.rank == 6) res.add(new Square(s.file, 4));
         }
         break;
     }
@@ -173,11 +169,13 @@ public class Board {
   }
 
   // returns all squares attacked by the piece on a given square
-  // refines accessible by checking for obstruction, attempts to capture same color
+  // refines accessible by checking for obstruction, attempts to capture same color, pawn captures
+  // does not include castling
   private ArrayList<Square> getAccessible(Square s) {
     ArrayList<Square> res = getRange(s);
-    res.removeIf(p -> {
+    res.removeIf((Square p) -> {
       if (p.contents().color == s.contents().color) return true;
+      boolean q_bishop = false;
       switch (s.contents().type) {
         case P:
         if (Math.abs(p.rank - s.rank) > 1) {
@@ -186,24 +184,55 @@ public class Board {
           }
         }
         if (p == en_passant) return false;
-        return s.file == p.file ? p.contents().type != PieceType.E : p.contents().type == PieceType.E;
+        if (s.file == p.file) {
+          return p.contents().type != PieceType.E;
+        } else {
+          return p.contents().type == PieceType.E;
+        }
+
+        case Q:
+        q_bishop = p.rank != s.rank && p.file != s.file;
 
         case B:
-        int r_sign = p.rank < s.rank ? -1 : 1;
-        int f_sign = p.file < s.file ? -1 : 1;
-        boolean obstruction = false;
-        for (int r = rsign; Math.abs(r) <= Math.abs(p.rank - s.rank); r += r_sign) {
-          boolean o = obstruction;
-          int f = f_sign * Math.abs(r);
-          obstruction = board[f][r].type != PieceType.E;
-          return o;
+        if (s.contents().type == PieceType.B || q_bishop) {
+          int r_sign = p.rank < s.rank ? -1 : 1;
+          int f_sign = p.file < s.file ? -1 : 1;
+          boolean obstruction = false;
+          for (int r = r_sign; Math.abs(r) <= Math.abs(p.rank - s.rank); r += r_sign) {
+            int f = f_sign * Math.abs(r);
+            obstruction = board[f][r].type != PieceType.E;
+          }
+          return obstruction;
         }
 
         case R:
         int r_inc = p.rank == s.rank ? 0 : (p.rank < s.rank ? -1 : 1);
         int f_inc = p.file == s.file ? 0 : (p.file < s.file ? -1 : 1);
-        if (r_inc != 0)
+        boolean obstruction = false;
+        boolean last_obstruction = false;
+        if (r_inc != 0) {
+          for (int i = s.rank + r_inc; (p.rank - i) * r_inc > 0; i += r_inc) {
+            last_obstruction = obstruction;
+            if (board[p.file][i].type != PieceType.E) obstruction = true;
+          }
+        } else {
+          for (int i = s.file + f_inc; (p.file - i) * f_inc > 0; i += f_inc) {
+            last_obstruction = obstruction;
+            if (board[i][p.rank].type != PieceType.E) obstruction = true;
+          }
+        }
+        return obstruction;
+
+        case N:
+        return false;
+
+        case K:
+        return false;
       }
+      return true;
     });
+    return res;
   }
+
+
 }
