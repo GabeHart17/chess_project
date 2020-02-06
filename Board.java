@@ -4,27 +4,6 @@ import java.util.function.Predicate;
 
 public class Board {
 
-  public class Square {
-    public final int file; // file
-    public final int rank; // rank
-    public Square(int f, int r) {
-      rank = r;
-      file = f;
-    }
-    public boolean equals(Object other) {
-      if (other instanceof Square) {
-        return rank == ((Square) other).rank && file == ((Square) other).file;
-      }
-      return false;
-    }
-    public boolean isOnBoard() {
-      return 0 <= rank && rank <= 7 && 0 <= file && file <= 7;
-    }
-    public Piece contents() {
-      return board[file][rank];
-    }
-  }
-
   public class Move {
     public final Square start;
     public final Square finish;
@@ -33,27 +12,13 @@ public class Board {
       finish = f;
     }
     public boolean isLegal() {
-      if (start.contents().color == PieceColor.E) return false;
-      if (start.contents().color == finish.contents().color) return false;
+      if (getPiece(start).color == PieceColor.E) return false;
+      if (getPiece(start).color == getPiece(finish).color) return false;
 
-      if (start.contents().type == PieceType.P) {
-        //if
-      }
+
       return false;
     }
   }
-
-  private class Piece {
-    public final PieceType type;
-    public final PieceColor color;
-    public Piece (PieceType t, PieceColor c) {
-      type = t;
-      color = c;
-    }
-  }
-
-  public enum PieceType {E, K, Q, R, B, N, P};  // E is for empty squares
-  public enum PieceColor {B, W, E};
 
 
   private Piece[][] board = new Piece[8][8];
@@ -94,7 +59,7 @@ public class Board {
   // does not check move obstruction
   private ArrayList<Square> getRange(Square s) {
     ArrayList<Square> res = new ArrayList<>();
-    switch (s.contents().type) {
+    switch (getPiece(s).type) {
       case E:
       return res;
 
@@ -120,7 +85,7 @@ public class Board {
             res.add(new Square(s.file, i));
           }
         }
-        if (s.contents().type == PieceType.R) break;
+        if (getPiece(s).type == PieceType.R) break;
 
       case B:
         for (int i = -7; i < 8; i++) {
@@ -149,7 +114,7 @@ public class Board {
         break;
 
       case P:
-        if (s.contents().color == PieceColor.W) {
+        if (getPiece(s).color == PieceColor.W) {
           for (int i = -1; i < 2; i++) {
             Square sq = new Square(s.file + i, s.rank + 1);
             if (sq.isOnBoard()) res.add(sq);
@@ -174,9 +139,9 @@ public class Board {
   private ArrayList<Square> getAccessible(Square s) {
     ArrayList<Square> res = getRange(s);
     res.removeIf((Square p) -> {
-      if (p.contents().color == s.contents().color) return true;
+      if (getPiece(p).color == getPiece(s).color) return true;
       boolean q_bishop = false;
-      switch (s.contents().type) {
+      switch (getPiece(s).type) {
         case P:
         if (Math.abs(p.rank - s.rank) > 1) {
           if (board[p.file][s.rank + (s.rank > p.rank ? -1 : 1)].type != PieceType.E) {
@@ -185,16 +150,16 @@ public class Board {
         }
         if (p == en_passant) return false;
         if (s.file == p.file) {
-          return p.contents().type != PieceType.E;
+          return getPiece(p).type != PieceType.E;
         } else {
-          return p.contents().type == PieceType.E;
+          return getPiece(p).type == PieceType.E;
         }
 
         case Q:
         q_bishop = p.rank != s.rank && p.file != s.file;
 
         case B:
-        if (s.contents().type == PieceType.B || q_bishop) {
+        if (getPiece(s).type == PieceType.B || q_bishop) {
           int r_sign = p.rank < s.rank ? -1 : 1;
           int f_sign = p.file < s.file ? -1 : 1;
           boolean obstruction = false;
@@ -224,8 +189,6 @@ public class Board {
         return obstruction;
 
         case N:
-        return false;
-
         case K:
         return false;
       }
@@ -234,5 +197,7 @@ public class Board {
     return res;
   }
 
-
+  public Piece getPiece(Square s) {
+    return board[s.file][s.rank];
+  }
 }
