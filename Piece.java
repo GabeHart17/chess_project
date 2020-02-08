@@ -5,4 +5,13 @@ public class Piece {
     type = t;
     color = c;
   }
+  public boolean equals(Object other) {
+    if (other instanceof Piece) {
+      return type == ((Piece) other).type && color == ((Piece) other).color;
+    }
+    return false;
+  }
+  public String toString() {
+    return String.format("(%s, %s)", type, color);
+  }
 }
