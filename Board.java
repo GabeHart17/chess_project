@@ -4,28 +4,91 @@ import java.util.function.Predicate;
 
 public class Board {
 
-  public class Move {
+  private class Move {
     public final Square start;
     public final Square finish;
+    private final Piece startPiece;
+    private final Piece finishPiece;
+    private final boolean isCastling;
+    private boolean made = false;
     public Move(Square s, Square f) {
       start = s;
       finish = f;
+      startPiece = getPiece(s);
+      finishPiece = getPiece(f);
+      if (startPiece.type == PieceType.K) {
+        if (!(getAccessible(start).contains(finish))) {
+          isCastling = start.rank == (startPiece.color == PieceColor.W ? 0 : 7);
+        } else {
+          isCastling = false;
+        }
+      } else {
+        isCastling = false;
+      }
+    }
+    private void make() {
+      board[finish.file][finish.rank] = getPiece(start);
+      board[start.file][start.rank] = new Piece();
+      if (isCastling) {
+        int side = finish.file - start.file > 0 ? 1 : -1;  // 1 for kingside, -1 for queenside
+        board[finish.file - side][start.rank] = board[side > 0 ? 7 : 0][start.rank];
+        board[side > 0 ? 7 : 0][start.rank] = new Piece();
+      }
+      made = true;
+    }
+    private void unMake() {
+      board[finish.file][finish.rank] = finishPiece;
+      board[start.file][start.rank] = startPiece;
+      if (isCastling) {
+        int side = finish.file - start.file > 0 ? 1 : -1;  // 1 for kingside, -1 for queenside
+        board[side > 0 ? 7 : 0][start.rank] = board[side > 0 ? 7 : 0][start.rank];
+        board[finish.file - side][start.rank] = new Piece();
+      }
+      made = false;
     }
     public boolean isLegal() {
+      if (made) return false;
       if (getPiece(start).color == PieceColor.E) return false;
       if (getPiece(start).color == getPiece(finish).color) return false;
-
-
-      return false;
+      if (isCastling) {
+        for (int i = start.file; i != 0 && i != 7; i += Math.copySign(1, finish.file - start.file)) {
+          if (i != start.file) {
+            Square s = new Square(i, start.rank);
+            if (getPiece(s).type != PieceType.E) return false;
+            if (getAttackers(s, startPiece.color == PieceColor.W ? PieceColor.B : PieceColor.W).contains(s)) {
+              return false;
+            }
+            int index = 0;
+            index += startPiece.color == PieceColor.W ? 0 : 2;
+            index += start.file - finish.file < 0 ? 0 : 1;
+            return castlable[index];
+          }
+        }
+      }
+      if (!getAccessible(start).contains(finish)) return false;
+      make();
+      boolean res = true;
+      if (!getAttackers(kings[startPiece.color == PieceColor.W ? 0 : 1], startPiece.color).isEmpty()) res = false;
+      unMake();
+      return res;
+    }
+    public boolean attempt() {
+      boolean res = isLegal();
+      if (res) make();
+      return res;
+    }
+    public boolean isMade() {
+      return made;
     }
   }
 
 
-  private Piece[][] board = new Piece[8][8];
+  private Piece[][] board = new Piece[8][8];  // indexed board[file][rank]
   private boolean[] castlable = { true, true, true, true };  // white kingside, white queenside, black kingside, black queenside
   private Square en_passant = null;  // the square on which the capturing pawn would land, behind the captured pawn
   private Square whiteKing = new Square(4, 0);
   private Square blackKing = new Square(4, 7);
+  private Square[] kings = new Square[2];  // 0 = white king, 1 = black king
 
   public Board() {
     for (int i = 0; i < 8; i++) {
@@ -50,32 +113,41 @@ public class Board {
         board[i][j] = new Piece(PieceType.E, PieceColor.E);
       }
     }
+    kings[0] = new Square(4, 0);
+    kings[1] = new Square(4, 7);
   }
 
+  public Piece getPiece(Square s) {
+    return board[s.file][s.rank];
+  }
+
+  public boolean makeMove(Square start, Square finish) {
+    Move m = new Move(start, finish);
+    return m.attempt();
+  }
 
   // return all squares that could potentially be accessible by this piece
   // does not include castling
   // assumes all possible pawn captures
   // does not check move obstruction
-  private ArrayList<Square> getRange(Square s) {
+  public ArrayList<Square> getRange(Square s) {
     ArrayList<Square> res = new ArrayList<>();
     switch (getPiece(s).type) {
       case E:
       return res;
 
       case K:
-        for (int i = -1; i < 2; i++) {
-          for (int j = -1; i < 2; i++) {
+        int[] r = {-1, 0, 1};
+        int[] f = {-1, 0, 1};
+        for (int i : f) {
+          for (int j : r) {
             Square sq = new Square(s.file + i, s.rank + j);
-            if (s != sq && sq.isOnBoard()) {
-              res.add(sq);
-            }
+            if (s != sq && sq.isOnBoard()) res.add(sq);
           }
         }
         break;
 
       case Q:
-
       case R:
         for (int i = 0; i < 8; i++) {
           if (i != s.file) {
@@ -136,7 +208,7 @@ public class Board {
   // returns all squares attacked by the piece on a given square
   // refines accessible by checking for obstruction, attempts to capture same color, pawn captures
   // does not include castling
-  private ArrayList<Square> getAccessible(Square s) {
+  public ArrayList<Square> getAccessible(Square s) {
     ArrayList<Square> res = getRange(s);
     res.removeIf((Square p) -> {
       if (getPiece(p).color == getPiece(s).color) return true;
@@ -163,9 +235,11 @@ public class Board {
           int r_sign = p.rank < s.rank ? -1 : 1;
           int f_sign = p.file < s.file ? -1 : 1;
           boolean obstruction = false;
+          // System.out.println("getAccessible B");
           for (int r = r_sign; Math.abs(r) <= Math.abs(p.rank - s.rank); r += r_sign) {
             int f = f_sign * Math.abs(r);
-            obstruction = board[f][r].type != PieceType.E;
+            // System.out.printf("%s, %s\n", f, r);
+            obstruction = obstruction || board[s.file + f][s.rank + r].type != PieceType.E;
           }
           return obstruction;
         }
@@ -197,7 +271,31 @@ public class Board {
     return res;
   }
 
-  public Piece getPiece(Square s) {
-    return board[s.file][s.rank];
+  // return all attackers of a given color of a given square
+  // used for checking for checks
+  private ArrayList<Square> getAttackers(Square s, PieceColor c) {
+    ArrayList<Square> res = new ArrayList<>();
+    for (int f = 0; f < 8; f++) {
+      for (int r = 0; r < 8; r++) {
+        Square sq = new Square(f, r);
+        if (getAccessible(sq).contains(s) && getPiece(sq).color == c) {
+          res.add(sq);
+        }
+      }
+    }
+    return res;
+  }
+
+  public ArrayList<Square> getLegal(Square s) {
+    ArrayList<Square> res = getAccessible(s);
+    if (getPiece(s).type == PieceType.K) {
+      res.add(new Square(s.file + 2, s.rank));
+      res.add(new Square(s.file - 2, s.rank));
+    }
+    res.removeIf((Square p) -> {
+      Move m = new Move(s, p);
+      return !m.isLegal();
+    });
+    return res;
   }
 }

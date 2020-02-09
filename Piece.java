@@ -5,6 +5,9 @@ public class Piece {
     type = t;
     color = c;
   }
+  public Piece() {
+    this(PieceType.E, PieceColor.E);
+  }
   public boolean equals(Object other) {
     if (other instanceof Piece) {
       return type == ((Piece) other).type && color == ((Piece) other).color;
