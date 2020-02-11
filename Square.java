@@ -7,11 +7,14 @@ public class Square {
   }
   public boolean equals(Object other) {
     if (other instanceof Square) {
-      return rank == ((Square) other).rank && file == ((Square) other).file;
+      return (rank == ((Square) other).rank) && (file == ((Square) other).file);
     }
     return false;
   }
   public boolean isOnBoard() {
     return 0 <= rank && rank <= 7 && 0 <= file && file <= 7;
+  }
+  public String toString() {
+    return String.format("square(%s, %s)", file, rank);
   }
 }

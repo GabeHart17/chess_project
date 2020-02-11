@@ -15,6 +15,6 @@ public class Piece {
     return false;
   }
   public String toString() {
-    return String.format("(%s, %s)", type, color);
+    return String.format("piece(%s, %s)", type, color);
   }
 }

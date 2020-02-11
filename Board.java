@@ -68,7 +68,9 @@ public class Board {
       if (!getAccessible(start).contains(finish)) return false;
       make();
       boolean res = true;
-      if (!getAttackers(kings[startPiece.color == PieceColor.W ? 0 : 1], startPiece.color).isEmpty()) res = false;
+      ArrayList<Square> checks = getAttackers(kings[startPiece.color == PieceColor.W ? 0 : 1],
+                                              startPiece.color == PieceColor.W ? PieceColor.B : PieceColor.W);
+      if (!checks.isEmpty()) res = false;
       unMake();
       return res;
     }
@@ -235,32 +237,30 @@ public class Board {
           int r_sign = p.rank < s.rank ? -1 : 1;
           int f_sign = p.file < s.file ? -1 : 1;
           boolean obstruction = false;
-          // System.out.println("getAccessible B");
+          boolean last_obstruction = false;
           for (int r = r_sign; Math.abs(r) <= Math.abs(p.rank - s.rank); r += r_sign) {
             int f = f_sign * Math.abs(r);
             // System.out.printf("%s, %s\n", f, r);
-            obstruction = obstruction || board[s.file + f][s.rank + r].type != PieceType.E;
+            Piece target = board[s.file + f][s.rank + r];
+            last_obstruction = obstruction;
+            obstruction = obstruction || target.type != PieceType.E;
           }
-          return obstruction;
+          return last_obstruction;
         }
 
         case R:
-        int r_inc = p.rank == s.rank ? 0 : (p.rank < s.rank ? -1 : 1);
         int f_inc = p.file == s.file ? 0 : (p.file < s.file ? -1 : 1);
-        boolean obstruction = false;
-        boolean last_obstruction = false;
-        if (r_inc != 0) {
-          for (int i = s.rank + r_inc; (p.rank - i) * r_inc > 0; i += r_inc) {
-            last_obstruction = obstruction;
-            if (board[p.file][i].type != PieceType.E) obstruction = true;
+        int r_inc = p.rank == s.rank ? 0 : (p.rank < s.rank ? -1 : 1);
+        int file = s.file;
+        int rank = s.rank;
+        Square sq = new Square(file, rank);
+        while (!sq.equals(p)) {
+          if (!sq.equals(s)) {
+            if (getPiece(sq).type != PieceType.E) return true;
           }
-        } else {
-          for (int i = s.file + f_inc; (p.file - i) * f_inc > 0; i += f_inc) {
-            last_obstruction = obstruction;
-            if (board[i][p.rank].type != PieceType.E) obstruction = true;
-          }
+          sq = new Square(file += f_inc, rank += r_inc);
         }
-        return obstruction;
+        return false;
 
         case N:
         case K:
