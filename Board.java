@@ -155,7 +155,19 @@ public class Board {
 
   public boolean makeMove(Square start, Square finish) {
     Move m = new Move(start, finish);
-    return m.attempt();
+    int kIndex = getPiece(start).color == PieceColor.W ? 0 : 2;
+    int rIndex = start.file > 0 ? 0 : 1;
+    PieceType startType = getPiece(start).type;
+    boolean res = m.attempt();
+    if (res) {
+      if (startType == PieceType.K && start.file == 4) {
+        castlable[kIndex] = false;
+        castlable[kIndex + 1] = false;
+      } else if (startType == PieceType.R && (start.file == 0 || start.file == 7)) {
+        castlable[kIndex + rIndex] = false;
+      }
+    }
+    return res;
   }
 
   public Square getWhiteKing() { return kings[0]; }
