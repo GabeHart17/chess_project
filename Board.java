@@ -45,7 +45,7 @@ public class Board {
         board[finish.file][startPiece.color == PieceColor.W ? 4:3] = new Piece();
       }
       if ((startPiece.type == PieceType.P) && (Math.abs(start.rank - finish.rank) > 1)) {
-        en_passant = new Square(start.file, start.rank + (startPiece.color == PieceColor.W ? 1 : -1));
+        en_passant = new Square(start.file, startPiece.color == PieceColor.W ? 2 : 5);
       } else {
         en_passant = null;
       }
@@ -64,7 +64,7 @@ public class Board {
         kings[index] = start;
       }
       en_passant = ep;
-      if (finish.equals(ep)) {
+      if (startPiece.type == PieceType.P && finish.equals(ep)) {
         board[finish.file]
              [startPiece.color == PieceColor.W ? 4 : 3] = new Piece(PieceType.P,
                                                                     startPiece.color == PieceColor.W ? PieceColor.B : PieceColor.W);
@@ -267,10 +267,14 @@ public class Board {
             return true;
           }
         }
-        if (p.equals(en_passant)) return false;
         if (s.file == p.file) {
           return getPiece(p).type != PieceType.E;
         } else {
+          if (p.equals(en_passant)) {
+            if (p.rank == (getPiece(s).color == PieceColor.W ? 5 : 2)) {
+              return false;
+            }
+          }
           return getPiece(p).type == PieceType.E;
         }
 
