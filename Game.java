@@ -59,23 +59,28 @@ public class Game extends Application {
     highlight.setOnMouseClicked(e -> {
       if (!hasEnded) {
         handleClick(getClickSquare(e));
+        drawBoard();
         renderPieces();
         updateHighlight();
         checkEnds();
       }
     });
     sp.getChildren().addAll(board, pieces, highlight);
-    drawBoard(board.getGraphicsContext2D());
+    drawBoard();
     renderPieces();
     Scene scn = new Scene(bp, 8 * squareSize + 100, 8 * squareSize + 100);
     primary.setScene(scn);
     primary.show();
   }
 
+  private Square renderSquare(Square s) {  // applies board flip to a rank
+    return new Square(move ? s.file : 7 - s.file, move ? s.rank : 7 - s.rank);
+  }
+
   private Square getClickSquare(MouseEvent e) {
     int file = (int) (e.getX() / squareSize);
     int rank = 7 - (int) (e.getY() / squareSize);
-    return new Square(file, rank);
+    return renderSquare(new Square(file, rank));
   }
 
   private void handleClick(Square s) {
@@ -138,12 +143,14 @@ public class Game extends Application {
     }
   }
 
-  private void drawBoard(GraphicsContext gc) {
+  private void drawBoard() {
+    GraphicsContext gc = board.getGraphicsContext2D();
     for (int i = 0; i < 8; i++) {
       for (int j = 0; j < 8; j++) {
         Color c = (i + j) % 2 == 0 ? lightSqare : darkSquare;
         gc.setFill(c);
-        gc.fillRect(squareSize * i, squareSize * j, squareSize, squareSize);
+        Square s = renderSquare(new Square(i, j));
+        gc.fillRect(squareSize * s.file, squareSize * s.rank, squareSize, squareSize);
       }
     }
   }
@@ -152,7 +159,8 @@ public class Game extends Application {
     for (int f = 0; f < 8; f++) {
       for (int r = 0; r < 8; r++) {
         Piece p = game.getPiece(new Square(f, r));
-        renderer.render(p, pieces.getGraphicsContext2D(), f * squareSize, (7 - r) * squareSize);
+        Square s = renderSquare(new Square(f, 7 - r));
+        renderer.render(p, pieces.getGraphicsContext2D(), s.file * squareSize, s.rank * squareSize);
       }
     }
   }
@@ -164,8 +172,9 @@ public class Game extends Application {
   private void highlightSquare(Color c, Square s) {
     GraphicsContext gc = highlight.getGraphicsContext2D();
     gc.setFill(c);
-    int x = squareSize * s.file;
-    int y = squareSize * (7 - s.rank);
+    Square hs = renderSquare(s);
+    int x = squareSize * hs.file;
+    int y = squareSize * (7 - hs.rank);
     gc.fillRect(x, y, squareSize, squareSize);
   }
 
@@ -173,8 +182,9 @@ public class Game extends Application {
     GraphicsContext gc = highlight.getGraphicsContext2D();
     gc.setStroke(c);
     gc.setLineWidth(squareSize / 16);
-    int x = squareSize * s.file;
-    int y = squareSize * (7 - s.rank);
+    Square hs = renderSquare(s);
+    int x = squareSize * hs.file;
+    int y = squareSize * (7 - hs.rank);
     gc.strokeRect(x, y, squareSize, squareSize);
   }
 
