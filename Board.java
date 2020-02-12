@@ -170,6 +170,17 @@ public class Board {
     return res;
   }
 
+  public boolean promotePawn(Square s, PieceType promotion) {
+    if (promotion == PieceType.E || promotion == PieceType.K || promotion == PieceType.P) return false;
+    if (getPiece(s).type != PieceType.P) return false;
+    if (s.rank == 0 || s.rank == 7) {
+      board[s.file][s.rank] = new Piece(promotion, getPiece(s).color);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   public Square getWhiteKing() { return kings[0]; }
   public Square getBlackKing() { return kings[1]; }
 

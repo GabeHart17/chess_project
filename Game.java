@@ -15,6 +15,10 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+
 
 
 public class Game extends Application {
@@ -74,7 +78,49 @@ public class Game extends Application {
       if (possibleMoves.contains(s)) {
         lastMove[0] = selectedSquare;
         lastMove[1] = s;
-        game.makeMove(selectedSquare, s);
+        boolean success = game.makeMove(selectedSquare, s);
+        if (success) {
+          if (game.getPiece(s).type == PieceType.P && (s.rank == 0 || s.rank == 7)) {
+            Stage promotionStage = new Stage();
+            BorderPane bp = new BorderPane();
+            MenuBar mb = new MenuBar();
+            bp.setTop(mb);
+            Menu mu = new Menu("Promote to...");
+            mb.getMenus().add(mu);
+            MenuItem qItem = new MenuItem("Queen");
+            qItem.setOnAction(e -> {
+              game.promotePawn(s, PieceType.Q);
+              renderPieces();
+              promotionStage.close();
+            });
+            MenuItem rItem = new MenuItem("Rook");
+            rItem.setOnAction(e -> {
+              game.promotePawn(s, PieceType.R);
+              renderPieces();
+              promotionStage.close();
+            });
+            MenuItem bItem = new MenuItem("Bishop");
+            bItem.setOnAction(e -> {
+              game.promotePawn(s, PieceType.B);
+              renderPieces();
+              promotionStage.close();
+            });
+            MenuItem nItem = new MenuItem("Knight");
+            nItem.setOnAction(e -> {
+              game.promotePawn(s, PieceType.N);
+              renderPieces();
+              promotionStage.close();
+            });
+            mu.getItems().addAll(qItem, rItem, bItem, nItem);
+            promotionStage.setOnCloseRequest(e -> {
+              game.promotePawn(s, PieceType.Q);
+              renderPieces();
+            });
+            Scene ps = new Scene(bp, 200, 100);
+            promotionStage.setScene(ps);
+            promotionStage.show();
+          }
+        }
       }
       selectedSquare = null;
     }
