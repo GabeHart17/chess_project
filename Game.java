@@ -31,7 +31,7 @@ public class Game extends Application {
   private Color whitePiece = Color.rgb(0, 0, 0);
   private Color checkColor = Color.RED;  // color for checks and checkmates
   private Color checkHighlight = Color.rgb(255, 0, 0, 0.3);
-  private Color lastHighlight = Color.rgb(238, 204, 0, 0.3);  // color for last move
+  private Color lastHighlight = Color.rgb(255, 200, 0, 0.3);  // color for last move
   private Color currentColor = Color.GREEN;  // color for current move
   private Color currentHighlight = Color.rgb(142, 218, 64, 0.3);
   private Square[] lastMove = new Square[2];
@@ -72,6 +72,8 @@ public class Game extends Application {
       possibleMoves = game.getLegal(s);
     } else {
       if (possibleMoves.contains(s)) {
+        lastMove[0] = selectedSquare;
+        lastMove[1] = s;
         game.makeMove(selectedSquare, s);
       }
       selectedSquare = null;
@@ -127,6 +129,14 @@ public class Game extends Application {
       for (Square s : possibleMoves) {
         highlightSquare(currentHighlight, s);
       }
+    }
+    Square wk = game.getWhiteKing();
+    if (!game.getAttackers(wk, PieceColor.B).isEmpty()) {
+      highlightSquare(checkHighlight, wk);
+    }
+    Square bk = game.getBlackKing();
+    if (!game.getAttackers(bk, PieceColor.W).isEmpty()) {
+      highlightSquare(checkHighlight, bk);
     }
   }
 }

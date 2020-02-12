@@ -10,10 +10,12 @@ public class Board {
     private final Piece startPiece;
     private final Piece finishPiece;
     private final boolean isCastling;
+    public final Square ep;
     private boolean made = false;
     public Move(Square s, Square f) {
       start = s;
       finish = f;
+      ep = en_passant;
       startPiece = getPiece(s);
       finishPiece = getPiece(f);
       if (startPiece.type == PieceType.K) {
@@ -34,6 +36,18 @@ public class Board {
         board[finish.file - side][start.rank] = board[side > 0 ? 7 : 0][start.rank];
         board[side > 0 ? 7 : 0][start.rank] = new Piece();
       }
+      if (startPiece.type == PieceType.K) {
+        int index = startPiece.color == PieceColor.W ? 0 : 1;
+        kings[index] = finish;
+      }
+      if (finish.equals(en_passant)) {
+        board[finish.file][startPiece.color == PieceColor.W ? 4:3] = new Piece();
+      }
+      if ((startPiece.type == PieceType.P) && (Math.abs(start.rank - finish.rank) > 1)) {
+        en_passant = new Square(start.file, start.rank + (startPiece.color == PieceColor.W ? 1 : -1));
+      } else {
+        en_passant = null;
+      }
       made = true;
     }
     private void unMake() {
@@ -43,6 +57,16 @@ public class Board {
         int side = finish.file - start.file > 0 ? 1 : -1;  // 1 for kingside, -1 for queenside
         board[side > 0 ? 7 : 0][start.rank] = board[side > 0 ? 7 : 0][start.rank];
         board[finish.file - side][start.rank] = new Piece();
+      }
+      if (startPiece.type == PieceType.K) {
+        int index = startPiece.color == PieceColor.W ? 0 : 1;
+        kings[index] = start;
+      }
+      en_passant = ep;
+      if (finish.equals(ep)) {
+        board[finish.file]
+             [startPiece.color == PieceColor.W ? 4 : 3] = new Piece(PieceType.P,
+                                                                    startPiece.color == PieceColor.W ? PieceColor.B : PieceColor.W);
       }
       made = false;
     }
@@ -75,8 +99,11 @@ public class Board {
       return res;
     }
     public boolean attempt() {
+      if (made) return false;
       boolean res = isLegal();
-      if (res) make();
+      if (res) {
+        make();
+      }
       return res;
     }
     public boolean isMade() {
@@ -127,6 +154,9 @@ public class Board {
     Move m = new Move(start, finish);
     return m.attempt();
   }
+
+  public Square getWhiteKing() { return kings[0]; }
+  public Square getBlackKing() { return kings[1]; }
 
   // return all squares that could potentially be accessible by this piece
   // does not include castling
@@ -222,7 +252,7 @@ public class Board {
             return true;
           }
         }
-        if (p == en_passant) return false;
+        if (p.equals(en_passant)) return false;
         if (s.file == p.file) {
           return getPiece(p).type != PieceType.E;
         } else {
@@ -273,7 +303,8 @@ public class Board {
 
   // return all attackers of a given color of a given square
   // used for checking for checks
-  private ArrayList<Square> getAttackers(Square s, PieceColor c) {
+  // public to allow other classes to check for attackers
+  public ArrayList<Square> getAttackers(Square s, PieceColor c) {
     ArrayList<Square> res = new ArrayList<>();
     for (int f = 0; f < 8; f++) {
       for (int r = 0; r < 8; r++) {
@@ -293,6 +324,7 @@ public class Board {
       res.add(new Square(s.file - 2, s.rank));
     }
     res.removeIf((Square p) -> {
+      if (!p.isOnBoard()) return true;
       Move m = new Move(s, p);
       return !m.isLegal();
     });
