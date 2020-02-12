@@ -20,7 +20,8 @@ public class Board {
       finishPiece = getPiece(f);
       if (startPiece.type == PieceType.K) {
         if (!(getAccessible(start).contains(finish))) {
-          isCastling = start.rank == (startPiece.color == PieceColor.W ? 0 : 7);
+          //isCastling = start.rank == (startPiece.color == PieceColor.W ? 0 : 7);
+          isCastling = start.equals(new Square(4, startPiece.color == PieceColor.W ? 0 : 7));
         } else {
           isCastling = false;
         }
@@ -76,18 +77,20 @@ public class Board {
       if (getPiece(start).color == getPiece(finish).color) return false;
       if (isCastling) {
         for (int i = start.file; i != 0 && i != 7; i += Math.copySign(1, finish.file - start.file)) {
-          if (i != start.file) {
-            Square s = new Square(i, start.rank);
-            if (getPiece(s).type != PieceType.E) return false;
-            if (getAttackers(s, startPiece.color == PieceColor.W ? PieceColor.B : PieceColor.W).contains(s)) {
+          Square s = new Square(i, start.rank);
+          if (Math.abs(start.file - s.file) < 4) {
+            if (!getAttackers(s, startPiece.color == PieceColor.W ? PieceColor.B : PieceColor.W).isEmpty()) {
               return false;
             }
-            int index = 0;
-            index += startPiece.color == PieceColor.W ? 0 : 2;
-            index += start.file - finish.file < 0 ? 0 : 1;
-            return castlable[index];
+          }
+          if (i != start.file) {
+            if (getPiece(s).type != PieceType.E) return false;
           }
         }
+        int index = 0;
+        index += startPiece.color == PieceColor.W ? 0 : 2;
+        index += start.file - finish.file < 0 ? 0 : 1;
+        return castlable[index];
       }
       if (!getAccessible(start).contains(finish)) return false;
       make();
