@@ -360,4 +360,36 @@ public class Board {
     });
     return res;
   }
+
+  public boolean isCheckmated(PieceColor c) {
+    if (getAttackers(kings[c == PieceColor.W ? 0 : 1], c == PieceColor.W ? PieceColor.B : PieceColor.W).isEmpty()) {
+      return false;
+    }
+    for (int f = 0; f < 8; f++) {
+      for (int r = 0; r < 8; r++) {
+        Square sq = new Square(f, r);
+        if (getPiece(sq).color != c) continue;
+        if (!getLegal(sq).isEmpty()) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  public boolean isStalemated(PieceColor c) {
+    if (!getAttackers(kings[c == PieceColor.W ? 0 : 1], c == PieceColor.W ? PieceColor.B : PieceColor.W).isEmpty()) {
+      return false;
+    }
+    for (int f = 0; f < 8; f++) {
+      for (int r = 0; r < 8; r++) {
+        Square sq = new Square(f, r);
+        if (getPiece(sq).color != c) continue;
+        if (!getLegal(sq).isEmpty()) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
 }

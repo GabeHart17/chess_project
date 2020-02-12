@@ -18,6 +18,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.scene.text.Text;
 
 
 
@@ -33,7 +34,7 @@ public class Game extends Application {
   private Color lightSqare = Color.rgb(200, 200, 200);
   private Color blackPiece = Color.rgb(255, 255, 255);
   private Color whitePiece = Color.rgb(0, 0, 0);
-  private Color checkColor = Color.RED;  // color for checks and checkmates
+  private Color checkmateColor = Color.RED;  // color for checkmates
   private Color checkHighlight = Color.rgb(255, 0, 0, 0.3);
   private Color lastHighlight = Color.rgb(255, 200, 0, 0.3);  // color for last move
   private Color currentColor = Color.GREEN;  // color for current move
@@ -41,20 +42,27 @@ public class Game extends Application {
   private Square[] lastMove = new Square[2];
   private Square selectedSquare = null;
   private ArrayList<Square> possibleMoves = null;
+  private Text status = new Text("White to move");
+  private boolean move = true; // true for white, false for black
+  private boolean hasEnded = false;
 
 
   @Override
   public void start(Stage primary) {
     BorderPane bp = new BorderPane();
     StackPane sp = new StackPane();
+    bp.setTop(status);
     bp.setCenter(sp);
     board = new Canvas(8 * squareSize, 8 * squareSize);
     pieces = new Canvas(8 * squareSize, 8 * squareSize);
     highlight = new Canvas(8 * squareSize, 8 * squareSize);
     highlight.setOnMouseClicked(e -> {
-      handleClick(getClickSquare(e));
-      renderPieces();
-      updateHighlight();
+      if (!hasEnded) {
+        handleClick(getClickSquare(e));
+        renderPieces();
+        updateHighlight();
+        checkEnds();
+      }
     });
     sp.getChildren().addAll(board, pieces, highlight);
     drawBoard(board.getGraphicsContext2D());
@@ -72,14 +80,18 @@ public class Game extends Application {
 
   private void handleClick(Square s) {
     if (selectedSquare == null) {
-      selectedSquare = s;
-      possibleMoves = game.getLegal(s);
+      if (game.getPiece(s).color == (move ? PieceColor.W : PieceColor.B)) {
+        selectedSquare = s;
+        possibleMoves = game.getLegal(s);
+      }
     } else {
       if (possibleMoves.contains(s)) {
         lastMove[0] = selectedSquare;
         lastMove[1] = s;
         boolean success = game.makeMove(selectedSquare, s);
         if (success) {
+          status.setText(String.format("%s to move", move ? "Black" : "White"));
+          move = !move;
           if (game.getPiece(s).type == PieceType.P && (s.rank == 0 || s.rank == 7)) {
             Stage promotionStage = new Stage();
             BorderPane bp = new BorderPane();
@@ -183,6 +195,24 @@ public class Game extends Application {
     Square bk = game.getBlackKing();
     if (!game.getAttackers(bk, PieceColor.W).isEmpty()) {
       highlightSquare(checkHighlight, bk);
+    }
+  }
+
+  private void checkEnds() {
+    PieceColor c = move ? PieceColor.W : PieceColor.B;
+    boolean cm = game.isCheckmated(c);
+    boolean sm = game.isStalemated(c);
+    if (sm || cm) {
+      hasEnded = true;
+      clearHighlight();
+      if (cm) {
+        Square sq = move ? game.getWhiteKing() : game.getBlackKing();
+        highlightSquare(checkHighlight, sq);
+        boxSquare(checkmateColor, sq);
+        status.setText(String.format("Checkmate. %s wins.", move ? "Black" : "White"));
+      } else {
+        status.setText("Stalemate. Game is drawn.");
+      }
     }
   }
 }
