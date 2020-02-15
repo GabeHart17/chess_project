@@ -18,11 +18,15 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.text.Text;
 
 
 
 public class Game extends Application {
+
+  private enum BoardOrientation {UP, DOWN, RIGHT, LEFT};  // side of board on which white pieces are
 
   private int squareSize = 100;
   private Board game = new Board();
@@ -43,15 +47,18 @@ public class Game extends Application {
   private Square selectedSquare = null;
   private ArrayList<Square> possibleMoves = null;
   private Text status = new Text("White to move");
-  private boolean move = true; // true for white, false for black
+  private boolean move = true;  // true for white, false for black
   private boolean hasEnded = false;
+  private BoardOrientation orientation = BoardOrientation.DOWN;
+  private boolean flipOrientation = false;  // whether or not to flip the board after each turn
 
 
   @Override
   public void start(Stage primary) {
     BorderPane bp = new BorderPane();
     StackPane sp = new StackPane();
-    bp.setTop(status);
+    bp.setTop(makeMenus());
+    bp.setBottom(status);
     bp.setCenter(sp);
     board = new Canvas(8 * squareSize, 8 * squareSize);
     pieces = new Canvas(8 * squareSize, 8 * squareSize);
@@ -59,9 +66,7 @@ public class Game extends Application {
     highlight.setOnMouseClicked(e -> {
       if (!hasEnded) {
         handleClick(getClickSquare(e));
-        drawBoard();
-        renderPieces();
-        updateHighlight();
+        renderAll();
         checkEnds();
       }
     });
@@ -73,14 +78,130 @@ public class Game extends Application {
     primary.show();
   }
 
-  private Square renderSquare(Square s) {  // applies board flip to a rank
-    return new Square(move ? s.file : 7 - s.file, move ? s.rank : 7 - s.rank);
+  private void renderAll() {
+    drawBoard();
+    renderPieces();
+    updateHighlight();
+  }
+
+  private MenuBar makeMenus() {
+    MenuBar mb = new MenuBar();
+    mb.getMenus().addAll(makeOrientationMenu(), makeFlipMenu());
+    return mb;
+  }
+
+  private Menu makeOrientationMenu() {
+    Menu m = new Menu("Set Orientation");
+    MenuItem upItem = new MenuItem("Up");
+    upItem.setOnAction(e -> {
+      orientation = BoardOrientation.UP;
+      renderAll();
+    });
+    MenuItem downItem = new MenuItem("Down");
+    downItem.setOnAction(e -> {
+      orientation = BoardOrientation.DOWN;
+      renderAll();
+    });
+    MenuItem leftItem = new MenuItem("Left");
+    leftItem.setOnAction(e -> {
+      orientation = BoardOrientation.LEFT;
+      renderAll();
+    });
+    MenuItem rightItem = new MenuItem("Right");
+    rightItem.setOnAction(e -> {
+      orientation = BoardOrientation.RIGHT;
+      renderAll();
+    });
+    m.getItems().addAll(upItem, downItem, leftItem, rightItem);
+    return m;
+  }
+
+  private Menu makeFlipMenu() {
+    Menu m = new Menu("Flip Orientation");
+    ToggleGroup tg = new ToggleGroup();
+    RadioMenuItem onItem = new RadioMenuItem("On");
+    onItem.setToggleGroup(tg);
+    onItem.setOnAction(e -> {
+      flipOrientation = true;
+    });
+    RadioMenuItem offItem = new RadioMenuItem("Off");
+    offItem.setToggleGroup(tg);
+    offItem.setOnAction(e -> {
+      flipOrientation = false;
+    });
+    m.getItems().addAll(onItem, offItem);
+    return m;
+  }
+
+  private BoardOrientation inverseOrientation(BoardOrientation b) {
+    BoardOrientation res = BoardOrientation.UP;
+    switch (b) {
+      case UP:
+      res = BoardOrientation.DOWN;
+      break;
+      case DOWN:
+      res = BoardOrientation.UP;
+      break;
+      case RIGHT:
+      res = BoardOrientation.LEFT;
+      break;
+      case LEFT:
+      res = BoardOrientation.RIGHT;
+      break;
+    }
+    return res;
+  }
+
+  private Square rotateCW(Square s) {
+    return new Square(s.rank, 7 - s.file);
+  }
+
+  private Square rotateCCW(Square s) {
+    return new Square(7 - s.rank, s.file);
+  }
+
+  private Square renderSquare(Square s) {  // applies board orientation to a square
+    int iter = 0;
+    switch (orientation) {
+      case RIGHT:
+      iter += 1;
+      case UP:
+      iter += 1;
+      case LEFT:
+      iter += 1;
+      case DOWN:
+      break;
+    }
+    Square res = s;
+    for (int i = 0; i < iter; i++) {
+      res = rotateCW(res);
+    }
+    return new Square(res.file, 7 - res.rank);
+  }
+
+  private Square boardSquare(Square s) {  // inverse of renderSquare()
+    int iter = 0;
+    switch (orientation) {
+      case RIGHT:
+      iter += 1;
+      case UP:
+      iter += 1;
+      case LEFT:
+      iter += 1;
+      case DOWN:
+      break;
+    }
+    Square res = new Square(s.file, 7 - s.rank);
+    for (int i = 0; i < iter; i++) {
+      res = rotateCCW(res);
+    }
+    return res;
   }
 
   private Square getClickSquare(MouseEvent e) {
     int file = (int) (e.getX() / squareSize);
-    int rank = 7 - (int) (e.getY() / squareSize);
-    return renderSquare(new Square(file, rank));
+    int rank = (int) (e.getY() / squareSize);
+    return boardSquare(new Square(file, rank));
   }
 
   private void handleClick(Square s) {
@@ -97,6 +218,9 @@ public class Game extends Application {
         if (success) {
           status.setText(String.format("%s to move", move ? "Black" : "White"));
           move = !move;
+          if (flipOrientation) {
+            orientation = inverseOrientation(orientation);
+          }
           if (game.getPiece(s).type == PieceType.P && (s.rank == 0 || s.rank == 7)) {
             Stage promotionStage = new Stage();
             BorderPane bp = new BorderPane();
@@ -159,7 +283,7 @@ public class Game extends Application {
     for (int f = 0; f < 8; f++) {
       for (int r = 0; r < 8; r++) {
         Piece p = game.getPiece(new Square(f, r));
-        Square s = renderSquare(new Square(f, 7 - r));
+        Square s = renderSquare(new Square(f, r));
         renderer.render(p, pieces.getGraphicsContext2D(), s.file * squareSize, s.rank * squareSize);
       }
     }
@@ -174,7 +298,7 @@ public class Game extends Application {
     gc.setFill(c);
     Square hs = renderSquare(s);
     int x = squareSize * hs.file;
-    int y = squareSize * (7 - hs.rank);
+    int y = squareSize * hs.rank;
     gc.fillRect(x, y, squareSize, squareSize);
   }
 
@@ -184,7 +308,7 @@ public class Game extends Application {
     gc.setLineWidth(squareSize / 16);
     Square hs = renderSquare(s);
     int x = squareSize * hs.file;
-    int y = squareSize * (7 - hs.rank);
+    int y = squareSize * hs.rank;
     gc.strokeRect(x, y, squareSize, squareSize);
   }
 
