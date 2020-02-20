@@ -271,7 +271,7 @@ public class Game extends Application {
     GraphicsContext gc = board.getGraphicsContext2D();
     for (int i = 0; i < 8; i++) {
       for (int j = 0; j < 8; j++) {
-        Color c = (i + j) % 2 == 0 ? lightSqare : darkSquare;
+        Color c = (i + j) % 2 == 0 ? darkSquare : lightSqare;
         gc.setFill(c);
         Square s = renderSquare(new Square(i, j));
         gc.fillRect(squareSize * s.file, squareSize * s.rank, squareSize, squareSize);
